@@ -1,5 +1,4 @@
-import json, string, csv, tweepy, yaml, time, progressbar, re
-
+import json, string, csv, yaml, time, progressbar, re, html2text
 from pprint import pprint
 from pathlib import Path
 from time import sleep
@@ -123,7 +122,7 @@ class TweetSet():
         self.ids = ids
         self.tweets = []
         
-        bar = progressbar.ProgressBar(max_value=len(self.ids)).start()
+        bar = progressbar.ProgressBar(maxval=len(self.ids)).start()
         for i, id in enumerate(ids):
             bar.update(i)
             tweet = Tweet(id, suppress_warnings=self.suppress_warnings)
@@ -148,6 +147,12 @@ def get_json_from_cache(id_str, cache_dir):
 def clean_text(text, **kwargs):
     if len(kwargs) == 0: kwargs['set_all'] = True # If no keyword arguments are provided, we will clean out everything
 
+    h = html2text.HTML2Text()
+    h.ignore_links = True
+    h.bypass_tables = True
+    
+    text = h.handle(text)
+                                                     
     lower=False
     no_links=False
     no_digits=False
@@ -218,7 +223,7 @@ def clean_text(text, **kwargs):
             text = returnString
 
         if expand_contractions:
-            text = expandContractions(text.replace("’", "'"))
+            text = _expand_contractions(text.replace("’", "'"))
 
         if no_punc:
             text = re.sub("[{}]".format(string.punctuation)," ", text)
@@ -265,151 +270,10 @@ def clean_text(text, **kwargs):
     else:
         return(None)
 
-def expandContractions(text, c_re=None):
-    cList = {
-        "ain't": "am not",
-        "aren't": "are not",
-        "can't": "cannot",
-        "can't've": "cannot have",
-        "'cause": "because",
-        "could've": "could have",
-        "couldn't": "could not",
-        "couldn't've": "could not have",
-        "didn't": "did not",
-        "doesn't": "does not",
-        "don't": "do not",
-        "hadn't": "had not",
-        "hadn't've": "had not have",
-        "hasn't": "has not",
-        "haven't": "have not",
-        "he'd": "he would",
-        "he'd've": "he would have",
-        "he'll": "he will",
-        "he'll've": "he will have",
-        "he's": "he is",
-        "how'd": "how did",
-        "how'd'y": "how do you",
-        "how'll": "how will",
-        "how's": "how is",
-        "i'd": "i would",
-        "i'd've": "i would have",
-        "i'll": "i will",
-        "i'll've": "i will have",
-        "i'm": "i am",
-        "i've": "i have",
-        "isn't": "is not",
-        "it'd": "it had",
-        "it'd've": "it would have",
-        "it'll": "it will",
-        "it'll've": "it will have",
-        "it's": "it is",
-        "let's": "let us",
-        "ma'am": "madam",
-        "mayn't": "may not",
-        "might've": "might have",
-        "mightn't": "might not",
-        "mightn't've": "might not have",
-        "must've": "must have",
-        "mustn't": "must not",
-        "mustn't've": "must not have",
-        "needn't": "need not",
-        "needn't've": "need not have",
-        "o'clock": "of the clock",
-        "oughtn't": "ought not",
-        "oughtn't've": "ought not have",
-        "shan't": "shall not",
-        "sha'n't": "shall not",
-        "shan't've": "shall not have",
-        "she'd": "she would",
-        "she'd've": "she would have",
-        "she'll": "she will",
-        "she'll've": "she will have",
-        "she's": "she is",
-        "should've": "should have",
-        "shouldn't": "should not",
-        "shouldn't've": "should not have",
-        "so've": "so have",
-        "so's": "so is",
-        "that'd": "that would",
-        "that'd've": "that would have",
-        "that's": "that is",
-        "there'd": "there had",
-        "there'd've": "there would have",
-        "there's": "there is",
-        "they'd": "they would",
-        "they'd've": "they would have",
-        "they'll": "they will",
-        "they'll've": "they will have",
-        "they're": "they are",
-        "they've": "they have",
-        "to've": "to have",
-        "wasn't": "was not",
-        "we'd": "we had",
-        "we'd've": "we would have",
-        "we'll": "we will",
-        "we'll've": "we will have",
-        "we're": "we are",
-        "we've": "we have",
-        "weren't": "were not",
-        "what'll": "what will",
-        "what'll've": "what will have",
-        "what're": "what are",
-        "what's": "what is",
-        "what've": "what have",
-        "when's": "when is",
-        "when've": "when have",
-        "where'd": "where did",
-        "where's": "where is",
-        "where've": "where have",
-        "who'll": "who will",
-        "who'll've": "who will have",
-        "who's": "who is",
-        "who've": "who have",
-        "why's": "why is",
-        "why've": "why have",
-        "will've": "will have",
-        "won't": "will not",
-        "won't've": "will not have",
-        "would've": "would have",
-        "wouldn't": "would not",
-        "wouldn't've": "would not have",
-        "y'all": "you all",
-        "y'alls": "you alls",
-        "y'all'd": "you all would",
-        "y'all'd've": "you all would have",
-        "y'all're": "you all are",
-        "y'all've": "you all have",
-        "you'd": "you had",
-        "you'd've": "you would have",
-        "you'll": "you you will",
-        "you'll've": "you you will have",
-        "you're": "you are",
-        "you've": "you have",
-        "aint": "am not",
-        "arent": "are not",
-        "cant": "cannot",
-        "couldve": "could have",
-        "couldnt": "could not",
-        "didnt": "did not",
-        "doesnt": "does not",
-        "dont": "do not",
-        "hadnt": "had not",
-        "hasnt": "has not",
-        "havent": "have not",
-        "isnt": "is not",
-        "shouldve": "should have",
-        "shouldnt": "should not",
-        "thats": "that is",
-        "theyd": "they would",
-        "theyre": "they are",
-        "theyve": "they have",
-        "whats": "what is",
-        "wheres": "where is",
-        "youll": "you you will",
-        "youre": "you are",
-        "youve": "you have",
-    }
-    if c_re is None: c_re = re.compile('(%s)' % '|'.join(cList.keys()))
+def _expand_contractions(text, c_re=None):
+    with open("./configuration/contractions.yml") as f:
+        contractions = yaml.load(stream=f)
+    if c_re is None: c_re = re.compile('(%s)' % '|'.join(contractions.keys()))
     def replace(match):
-        return cList[match.group(0)]
-    return c_re.sub(replace, text)
+        return contractions[match.group(0)]
+    return(c_re.sub(replace, text))
