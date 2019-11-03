@@ -117,17 +117,18 @@ class User():
         self.verified = self._json.get('verified', None)
                   
 class TweetSet():
-    def __init__(self, ids=[], suppress_warnings=False):
+    def __init__(self, ids=[], suppress_warnings=False, progressbar=True):
         self.suppress_warnings = suppress_warnings
         self.ids = ids
+        self.progressbar = progressbar
         self.tweets = []
         
-        bar = progressbar.ProgressBar(maxval=len(self.ids)).start()
+        if self.progressbar: bar = progressbar.ProgressBar(maxval=len(self.ids)).start()
         for i, id in enumerate(ids):
-            bar.update(i)
+            if self.progressbar: bar.update(i)
             tweet = Tweet(id, suppress_warnings=self.suppress_warnings)
             self.tweets.append(tweet)
-        bar.finish()
+        if self.progressbar: bar.finish()
             
     def __repr__(self):
         return(f"TweetSet consisting of {len(self.tweets)} tweets.")
