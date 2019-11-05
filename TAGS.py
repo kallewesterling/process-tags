@@ -131,8 +131,14 @@ class TweetSet():
         self.ids = ids
         self.progressbar = progressbar
         self.tweets = []
-        if filter_key is not None: self.filter_key = filter_key
-        if filter_value is not None: self.filter_value = filter_value.lower()
+        if filter_key is not None:
+          self.filter_key = filter_key
+        else:
+          self.filter_key = None
+        if filter_value is not None:
+          self.filter_value = filter_value.lower()
+        else:
+          self.filter_value = None
 
         if self.progressbar: bar = pb.ProgressBar(maxval=len(self.ids)).start()
 
