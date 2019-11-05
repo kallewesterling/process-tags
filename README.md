@@ -39,7 +39,7 @@ tags.ids
 
 ### 2. Get data for a specific document
 
-A `TAGS.Document` object can also get data through looking for a specific ID: (if no data, returns `None`)
+A `TAGS.Document` object can also retrieve data for a specific ID from the file using the `get_data_for_id` method: (if no data, returns `None`)
 
 ```python
 test_id = 1156639282024464385
@@ -47,3 +47,5 @@ test_id = 1156639282024464385
 tags.get_data_for_id(test_id) # get all data for an ID
 tags.get_data_for_id(test_id, 'text') # get specific data for an ID
 ```
+
+Unfortunately, the TAGS.DocumentSet does not currently include such a method.
