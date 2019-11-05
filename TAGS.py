@@ -45,4 +45,31 @@ class Document():
 
 class DocumentSet():
 
-    def __init__(self):
+    def __init__(self, documents=[], directories=[], suppress_warnings=False):
+
+      # ingest
+      self.documents = [Path(x) for x in documents]
+      self.directories = [Path(x) for x in directories]
+      self.suppress_warnings = suppress_warnings
+
+      # Set up placeholders
+      self._documents_dict = {}
+
+      # Process all of the self.documents Paths
+      for doc_path in self.documents:
+        if doc_path not in self._documents_dict: self._documents_dict[doc_path] = Document(doc_path, suppress_warnings=self.suppress_warnings)
+
+      # Process all of the self.directories Paths
+      for directory in self.directories:
+        if not directory.exists() or not directory.is_dir(): raise RuntimeError(f"Directory {directory} does not exist or is not a directory.")
+        for doc_path in directory.glob("*.tsv"):
+          if doc_path not in self._documents_dict:
+            self._documents_dict[doc_path] = Document(doc_path, suppress_warnings=self.suppress_warnings)
+          elif doc_path in self._documents_dict and not suppress_warnings:
+            print(f"File {doc_path} was already ingested.")
+
+      self.ids = []
+      for path, doc in self._documents_dict.items():
+        self.ids.extend(doc.ids)
+
+      self.ids = list(set(self.ids))
