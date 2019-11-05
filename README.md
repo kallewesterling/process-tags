@@ -27,6 +27,19 @@ tags = TAGS.DocumentSet(directories=["./datasets/", "./another_dataset_folder/"]
 
 *Note that if you are including directories, make sure that there are no other .tsv files in the directories added. If there are, the script will likely crash.*
 
+**Note that you can also combine `paths` and `directories` to ingest anything you'd wish into your dataset.**
+
+## `suppress_warnings`
+
+There is one more parameter that you can provide to the constructor for both `TAGS.Document` and `TAGS.DocumentSet`: `suppress_warnings`. It must be a booleans (`True` or `False`) nd it is by default turned to False, thus generating warnings as you ingest your dataset.
+
+The following two examples will turn it off:
+
+```python
+tags = TAGS.Document(path="./datasets/downloaded_tags_document.tsv", suppress_warnings=True)
+multiple_tags = TAGS.DocumentSet(paths=["./datasets/folder_1/", "./datasets/folder_2/"], suppress_warnings=True)
+```
+
 ## Properties and methods
 
 ### 1. All IDs

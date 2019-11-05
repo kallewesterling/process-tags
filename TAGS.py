@@ -47,10 +47,22 @@ class DocumentSet():
 
     def __init__(self, documents=[], directories=[], suppress_warnings=False):
 
-      # ingest
-      self.documents = [Path(x) for x in documents]
-      self.directories = [Path(x) for x in directories]
+      # Ingest and strip [documents] and [directories] from non-existent entities as well as those that are not documents/directories
+      self.documents = [Path(x) for x in documents if Path(x).exists() and Path(x).is_file()]
+      self._error_documents = [Path(x) for x in documents if not Path(x).exists() or not Path(x).is_file()]
+
+      self.directories = [Path(x) for x in directories if Path(x).exists() and Path(x).is_dir()]
+      self._error_directories = [Path(x) for x in directories if not Path(x).exists() or not Path(x).is_dir()]
+
       self.suppress_warnings = suppress_warnings
+
+      if not self.suppress_warnings:
+        if len(self._error_documents):
+          print("An error occurred while attempting to ingest the following documents:")
+          for d in self._error_documents: print(f" - {d}")
+        elif len(self._error_directories):
+          print("An error occurred while attempting to ingest the following directories:")
+          for d in self._error_directories: print(f" - {d}")
 
       # Set up placeholders
       self._documents_dict = {}
