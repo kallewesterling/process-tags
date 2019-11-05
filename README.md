@@ -1,6 +1,6 @@
 # TAGS
 
-Package used for processing TAGS documents downloaded as tab-separated files.
+Package used for processing [TAGS](https://tags.hawksey.info/) documents downloaded as tab-separated files.
 
 
 ## Setting up a simple document
