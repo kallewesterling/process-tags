@@ -1,40 +1,31 @@
-import json, string, csv, yaml, time, re, html2text
-from pprint import pprint
+import csv
 from pathlib import Path
-from time import sleep
-
-import progressbar as pb
-
-from nltk.corpus import stopwords
 
 
-# Set up cache directories
-tweet_cache_dir = Path('/Users/kallewesterling/_twitter_cache/tweets/')
-user_cache_dir = Path('/Users/kallewesterling/_twitter_cache/users/')
+class Document():
 
-if not tweet_cache_dir.is_dir(): tweet_cache_dir.mkdir(parents=True)
-if not user_cache_dir.is_dir(): user_cache_dir.mkdir(parents=True)
-
-
-class document():
     def __init__(self, path, suppress_warnings=False):
         self.path = Path(path)
         self.suppress_warnings = suppress_warnings
         self._all_ids = None
 
+
     @property
     def ids(self):
-        if self._all_ids is None:
-            self._all_ids = self.get_ids()
+        if self._all_ids is None: self._all_ids = self.get_ids()
         return(self._all_ids)
 
-    def get_ids(self, file=None):
-        if file is None: file = self.path
-        
-        if not Path(file).is_file(): raise RuntimeError(f"File {file} does not exist.")
+
+    def __len__(self):
+        if self._all_ids is None: self._all_ids = self.get_ids()
+        return(len(self._all_ids))
+
+
+    def get_ids(self):
+        if not Path(self.path).is_file(): raise RuntimeError(f"File {self.path} does not exist.")
 
         all_ids = []
-        with Path(file).open("r") as f:
+        with Path(self.path).open("r") as f:
             reader = csv.DictReader(f, delimiter='\t')
             for i, rows in enumerate(reader):
                 if not rows['created_at'] and not rows['from_user'] and not rows['text']: pass # skip empty rows
@@ -45,169 +36,59 @@ class document():
                     if not self.suppress_warnings: print(f"Warning: ID ({rows['id_str']}) could not be interpreted as number.")
         return(list(set(all_ids)))
 
-class Tweet():
-    def __init__(self, id_str, suppress_warnings=False):
-        self.cache_dir = tweet_cache_dir
-        self.suppress_warnings = suppress_warnings
-        
-        self.id_str = str(id_str)
-        self._json = get_json_from_cache(self.id_str, self.cache_dir)
-        
-        self.error_handle()
-        
-        self.created_at = self._json.get('created_at', None)
-        self.full_text = self._json.get('full_text', None)
-        self.truncated = self._json.get('truncated', None)
-        self.entities = self._json.get('entities', None)
-        self.source = self._json.get('source', None)
-        self.in_reply_to_status_id_str = self._json.get('in_reply_to_status_id_str', None)
-        self.in_reply_to_user_id_str = self._json.get('in_reply_to_user_id_str', None)
-        self.in_reply_to_screen_name = self._json.get('in_reply_to_screen_name', None)
-        self.user = self._json.get('user', None)
-        self.geo = self._json.get('geo', None)
-        self.coordinates = self._json.get('coordinates', None)
-        self.place = self._json.get('place', None)
-        self.contributors = self._json.get('contributors', None)
-        self.is_quote_status = self._json.get('is_quote_status', None)
-        self.retweet_count = self._json.get('retweet_count', None)
-        self.favorite_count = self._json.get('favorite_count', None)
-        self.possibly_sensitive = self._json.get('possibly_sensitive', None)
-        self.lang = self._json.get('lang', None)
-        self.json_source = self._json.get('json_source', None)
 
-        if isinstance(self.user, dict): self.user = self.user['id_str']
-        self.user = User(self.user)
-
-        self.retweet = self.is_retweet()
+    def get_data_for_id(self, _id, key = None):
+        with open(self.path) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for rows in reader:
+                if str(rows['id_str']) == str(_id):
+                    if key is None: return(rows)
+                    else: return(rows.get(key, None))
+        return(None)
 
 
-    def is_retweet(self):
-      return("retweeted_status" in self._json or self.full_text.lower()[0:2] == "rt")
+class DocumentSet():
 
-    def error_handle(self):
-        if 'error' in self._json:
-            error = self._json['error'].replace("'",'"')
-            try:
-                error = json.loads(error)
-                if not self.suppress_warnings: print(f"Warning: Error in tweet ID {self.id_str}. Message: {error[0]['message']} (Twitter error {error[0]['code']})")
-            except ValueError:
-                print(f"Tried to display error message! {error}")
+    def __init__(self, documents=[], directories=[], suppress_warnings=False):
 
-class User():
-    def __init__(self, id_str):
-        self.cache_dir = user_cache_dir
+      # Ingest and strip [documents] and [directories] from non-existent entities as well as those that are not documents/directories
+      self.documents = [Path(x) for x in documents if Path(x).exists() and Path(x).is_file()]
+      self._error_documents = [Path(x) for x in documents if not Path(x).exists() or not Path(x).is_file()]
 
-        self.id_str = str(id_str)
-        self._json = get_json_from_cache(self.id_str, self.cache_dir)
+      self.directories = [Path(x) for x in directories if Path(x).exists() and Path(x).is_dir()]
+      self._error_directories = [Path(x) for x in directories if not Path(x).exists() or not Path(x).is_dir()]
 
-        self.contributors_enabled = self._json.get('contributors_enabled', None)
-        self.created_at = self._json.get('created_at', None)
-        self.description = self._json.get('description', None)
-        self.entities = self._json.get('entities', None)
-        self.favourites_count = self._json.get('favourites_count', None)
-        self.followers_count = self._json.get('followers_count', None)
-        self.friends_count = self._json.get('friends_count', None)
-        self.geo_enabled = self._json.get('geo_enabled', None)
-        self.has_extended_profile = self._json.get('has_extended_profile', None)
-        self.is_translation_enabled = self._json.get('is_translation_enabled', None)
-        self.is_translator = self._json.get('is_translator', None)
-        self.json_source = self._json.get('json_source', None)
-        self.lang = self._json.get('lang', None)
-        self.listed_count = self._json.get('listed_count', None)
-        self.location = self._json.get('location', None)
-        self.name = self._json.get('name', None)
-        self.screen_name = self._json.get('screen_name', None)
-        self.protected = self._json.get('protected', None)
-        self.time_zone = self._json.get('time_zone', None)
-        self.translator_type = self._json.get('translator_type', None)
-        self.url = self._json.get('url', None)
-        self.utc_offset = self._json.get('utc_offset', None)
-        self.verified = self._json.get('verified', None)
+      self.suppress_warnings = suppress_warnings
 
+      if not self.suppress_warnings:
+        if len(self._error_documents):
+          print("An error occurred while attempting to ingest the following documents:")
+          for d in self._error_documents: print(f" - {d}")
+        elif len(self._error_directories):
+          print("An error occurred while attempting to ingest the following directories:")
+          for d in self._error_directories: print(f" - {d}")
 
-class TweetSet():
-    def __init__(self, ids=[], suppress_warnings=False, progressbar=True, filter_key=None, filter_value=None, include_retweets=True):
-        self.suppress_warnings = suppress_warnings
-        self.ids = ids
-        self.progressbar = progressbar
-        self.tweets = []
-        if filter_key is not None:
-          self.filter_key = filter_key
-        else:
-          self.filter_key = None
-        if filter_value is not None:
-          self.filter_value = filter_value.lower()
-        else:
-          self.filter_value = None
+      # Set up placeholders
+      self._documents_dict = {}
 
-        if self.progressbar: bar = pb.ProgressBar(maxval=len(self.ids)).start()
+      # Process all of the self.documents Paths
+      for doc_path in self.documents:
+        if doc_path not in self._documents_dict: self._documents_dict[doc_path] = Document(doc_path, suppress_warnings=self.suppress_warnings)
 
-        for i, id in enumerate(ids):
-            f = None
+      # Process all of the self.directories Paths
+      for directory in self.directories:
+        if not directory.exists() or not directory.is_dir(): raise RuntimeError(f"Directory {directory} does not exist or is not a directory.")
+        for doc_path in directory.glob("*.tsv"):
+          if doc_path not in self._documents_dict:
+            self._documents_dict[doc_path] = Document(doc_path, suppress_warnings=self.suppress_warnings)
+          elif doc_path in self._documents_dict and not suppress_warnings:
+            print(f"File {doc_path} was already ingested.")
 
-            if self.progressbar: bar.update(i)
+      self.ids = []
+      for path, doc in self._documents_dict.items():
+        self.ids.extend(doc.ids)
 
-            tweet = Tweet(id, suppress_warnings=self.suppress_warnings)
-
-            if self.filter_key and self.filter_value:
-              f = Filter(tweet, self.filter_key, self.filter_value)
-              filter_out = f.filter_out
-            else:
-              filter_out = None
-
-            if tweet.retweet and include_retweets and not filter_out:
-              self.tweets.append(tweet) # we want retweets and this tweet has not been filtered so it's good to go
-            elif tweet.retweet and include_retweets and filter_out:
-              pass # we want retweets but this tweet has already been filtered
-            elif not tweet.retweet and not filter_out:
-              self.tweets.append(tweet) # this is an original tweet so we want to do this.
-            elif not tweet.retweet and filter_out:
-              pass # we want to capture it but it has been filtered out already
-            elif tweet.retweet and not include_retweets:
-              pass # we don't want retweets, no matter whether they've been filtered or not
-            else:
-              print("tweet.retweet: ", tweet.retweet, "\ninclude_retweets", include_retweets, "\nfilter_out", filter_out)
-        if self.progressbar: bar.finish()
-
-    def __repr__(self):
-        return(f"TweetSet consisting of {len(self.tweets)} tweets.")
+      self.ids = list(set(self.ids))
 
     def __len__(self):
-      return(len(self.tweets))
-
-
-def get_json_from_cache(id_str, cache_dir):
-    tweet_cache = cache_dir / id_str
-    if not tweet_cache.is_file():
-        raise RuntimeError(f"File {id} could not be opened.")
-    else:
-        with open(tweet_cache, "r") as f:
-            _json = json.load(f)
-        return(_json)
-
-
-def _expand_contractions(text, c_re=None):
-    with open("./configuration/contractions.yml") as f:
-        contractions = yaml.load(stream=f)
-    if c_re is None: c_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-    def replace(match):
-        return contractions[match.group(0)]
-    return(c_re.sub(replace, text))
-
-
-class Filter():
-
-  def __init__(self, tweet = None, filter_key = None, filter_value = None):
-    self.tweet = tweet
-    self.filter_key = filter_key
-    self.filter_value = filter_value.lower()
-
-    test_value = tweet._json.get(self.filter_key, "").lower()
-    if self.filter_value in test_value:
-      self.filter_in = True
-      self.filter_out = False
-    elif self.filter_value not in test_value:
-      self.filter_in = False
-      self.filter_out = True
-    else:
-      raise RuntimeError("Something strange happened here.")
+        return(len(self.ids))
