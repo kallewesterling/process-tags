@@ -12,9 +12,13 @@ class Document():
 
     @property
     def ids(self):
-        if self._all_ids is None:
-            self._all_ids = self.get_ids()
+        if self._all_ids is None: self._all_ids = self.get_ids()
         return(self._all_ids)
+
+
+    def __len__(self):
+        if self._all_ids is None: self._all_ids = self.get_ids()
+        return(len(self._all_ids))
 
 
     def get_ids(self):
@@ -85,3 +89,6 @@ class DocumentSet():
         self.ids.extend(doc.ids)
 
       self.ids = list(set(self.ids))
+
+    def __len__(self):
+        return(len(self.ids))
