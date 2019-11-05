@@ -41,3 +41,8 @@ class Document():
                     if key is None: return(rows)
                     else: return(rows.get(key, None))
         return(None)
+
+
+class DocumentSet():
+
+    def __init__(self):
