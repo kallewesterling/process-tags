@@ -1,7 +1,9 @@
-import json, string, csv, yaml, time, progressbar, re, html2text
+import json, string, csv, yaml, time, re, html2text
 from pprint import pprint
 from pathlib import Path
 from time import sleep
+
+import progressbar as pb
 
 from nltk.corpus import stopwords
 
@@ -117,17 +119,20 @@ class User():
         self.verified = self._json.get('verified', None)
                   
 class TweetSet():
-    def __init__(self, ids=[], suppress_warnings=False, progressbar=True):
+    def __init__(self, ids=[], suppress_warnings=False, progressbar=True, filter_key=None, filter_value=None):
         self.suppress_warnings = suppress_warnings
         self.ids = ids
         self.progressbar = progressbar
         self.tweets = []
         
-        if self.progressbar: bar = progressbar.ProgressBar(maxval=len(self.ids)).start()
+        if self.progressbar: bar = pb.ProgressBar(maxval=len(self.ids)).start()
         for i, id in enumerate(ids):
             if self.progressbar: bar.update(i)
             tweet = Tweet(id, suppress_warnings=self.suppress_warnings)
-            self.tweets.append(tweet)
+            if filter_key and filter_value:
+              if tweet._json.get(filter_key, None).lower == filter_value: self.tweets.append(tweet)
+            else: self.tweets.append(tweet)
+            
         if self.progressbar: bar.finish()
             
     def __repr__(self):
@@ -143,133 +148,6 @@ def get_json_from_cache(id_str, cache_dir):
             _json = json.load(f)
         return(_json)
 
-
-# imported from my instagram module
-def clean_text(text, **kwargs):
-    if len(kwargs) == 0: kwargs['set_all'] = True # If no keyword arguments are provided, we will clean out everything
-
-    h = html2text.HTML2Text()
-    h.ignore_links = True
-    h.bypass_tables = True
-    
-    text = h.handle(text)
-                                                     
-    lower=False
-    no_links=False
-    no_digits=False
-    expand_contractions=False
-    remove_stopwords=False
-    if "lower" in kwargs and kwargs['lower']: lower = True
-    if "no_links" in kwargs and kwargs['no_links']: no_links = True
-    if "no_digits" in kwargs and kwargs['no_digits']: no_digits = True
-    if "expand_contractions" in kwargs and kwargs['expand_contractions']: expand_contractions = True
-    if "remove_stopwords" in kwargs and kwargs['remove_stopwords']: remove_stopwords = True
-
-    strip_emoji=True
-    no_hash=True
-    no_at=True
-    no_punc=True
-    strip_spaces=True
-    if "strip_emoji" in kwargs and kwargs['strip_emoji']: strip_emoji = True
-    if "no_hash" in kwargs and kwargs['no_hash']: no_hash = True
-    if "no_at" in kwargs and kwargs['no_at']: no_at = True
-    if "no_punc" in kwargs and kwargs['no_punc']: no_punc = True
-    if "strip_spaces" in kwargs and kwargs['strip_spaces']: strip_spaces = True
-
-    if "set_all" in kwargs and kwargs['set_all']:
-        lower=True
-        no_links=True
-        no_digits=True
-        no_at=True
-        no_hash=True
-        expand_contractions=True
-        remove_stopwords=True
-    elif "set_all" in kwargs and not kwargs['set_all']:
-        lower=False
-        no_links=False
-        no_digits=False
-        no_at=False
-        no_hash=False
-        expand_contractions=False
-        remove_stopwords=False
-
-    if "strip_emoji" in kwargs and not kwargs['strip_emoji']: strip_emoji = False
-
-    def special_replacements(text):
-        replacements = {
-            "motherf ing": "motherf-ing"
-        }
-        for k, v in replacements.items():
-            text = text.replace(k, v)
-        return(text)
-
-    if text is not None:
-        text = str(text).replace("\n"," ")
-
-        if no_links: text = re.sub(r"(?i)\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))", "", text) # also replace www.????.co/m
-        if lower: text = text.lower()
-
-        if no_hash: text = re.sub(r"#[\w-]+", "", text)
-        if no_at: text = re.sub(r"@[\w-]+", "", text)
-        if no_digits: text = re.sub(r"[{}]".format(string.digits)," ", text)
-
-        if strip_emoji:
-            returnString=""
-            for character in text:
-                try:
-                    character.encode("ascii")
-                    returnString += character
-                except UnicodeEncodeError:
-                    returnString += ' '
-            text = returnString
-
-        if expand_contractions:
-            text = _expand_contractions(text.replace("’", "'"))
-
-        if no_punc:
-            text = re.sub("[{}]".format(string.punctuation)," ", text)
-            text = re.sub("[¡“”’]"," ", text)
-
-        if remove_stopwords:
-            stops = stopwords.words('english')
-            stops.extend([
-                'pm',
-                'w',
-                'rd',
-                'th',
-                'jan',
-                'feb',
-                'mar',
-                'apr',
-                'may',
-                'jun',
-                'jul',
-                'aug',
-                'sep',
-                'oct',
-                'nov',
-                'dec',
-                'mon',
-                'tue',
-                'wed',
-                'thu',
-                'fri',
-                'sat',
-                'sun'
-            ])
-            stops = set(stops)
-            filtered_words = [word for word in text.split() if word not in stops]
-            text = " ".join(filtered_words)
-
-        if strip_spaces:
-            text = re.sub(" +"," ", text)
-            text = text.strip()
-
-        text = special_replacements(text)
-
-        return(text)
-    else:
-        return(None)
 
 def _expand_contractions(text, c_re=None):
     with open("./configuration/contractions.yml") as f:
