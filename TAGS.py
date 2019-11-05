@@ -131,8 +131,8 @@ class TweetSet():
         self.ids = ids
         self.progressbar = progressbar
         self.tweets = []
-        self.filter_key = filter_key
-        self.filter_value = filter_value.lower()
+        if filter_key is not None: self.filter_key = filter_key
+        if filter_value is not None: self.filter_value = filter_value.lower()
 
         if self.progressbar: bar = pb.ProgressBar(maxval=len(self.ids)).start()
 
@@ -143,20 +143,24 @@ class TweetSet():
 
             tweet = Tweet(id, suppress_warnings=self.suppress_warnings)
 
-            if filter_key and filter_value: f = Filter(tweet, filter_key, filter_value)
+            if self.filter_key and self.filter_value:
+              f = Filter(tweet, self.filter_key, self.filter_value)
+              filter_out = f.filter_out
+            else:
+              filter_out = None
 
-            if tweet.retweet and include_retweets and not f.filter_out:
+            if tweet.retweet and include_retweets and not filter_out:
               self.tweets.append(tweet) # we want retweets and this tweet has not been filtered so it's good to go
-            elif tweet.retweet and include_retweets and f.filter_out:
+            elif tweet.retweet and include_retweets and filter_out:
               pass # we want retweets but this tweet has already been filtered
-            elif not tweet.retweet and not f.filter_out:
+            elif not tweet.retweet and not filter_out:
               self.tweets.append(tweet) # this is an original tweet so we want to do this.
-            elif not tweet.retweet and f.filter_out:
+            elif not tweet.retweet and filter_out:
               pass # we want to capture it but it has been filtered out already
             elif tweet.retweet and not include_retweets:
               pass # we don't want retweets, no matter whether they've been filtered or not
             else:
-              print("tweet.retweet: ", tweet.retweet, "\ninclude_retweets", include_retweets, "\nf.filter_out", f.filter_out)
+              print("tweet.retweet: ", tweet.retweet, "\ninclude_retweets", include_retweets, "\nfilter_out", filter_out)
         if self.progressbar: bar.finish()
 
     def __repr__(self):
