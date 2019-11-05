@@ -51,6 +51,10 @@ class DocumentSet():
 
     def __init__(self, documents=[], directories=[], suppress_warnings=False):
 
+      # Check datatypes
+      if documents and not isinstance(documents, list): raise RuntimeError(f"Provided `documents` argument must be a list.")
+      if directories and not isinstance(directories, list): raise RuntimeError(f"Provided `directories` argument must be a list.")
+
       # Ingest and strip [documents] and [directories] from non-existent entities as well as those that are not documents/directories
       self.documents = [Path(x) for x in documents if Path(x).exists() and Path(x).is_file()]
       self._error_documents = [Path(x) for x in documents if not Path(x).exists() or not Path(x).is_file()]
