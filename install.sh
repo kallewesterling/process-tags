@@ -1,0 +1,1 @@
+cp TAGS.py /usr/local/lib/python3.7/site-packages/TAGS.py
